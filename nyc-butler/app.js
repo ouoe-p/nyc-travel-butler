@@ -1,6 +1,8 @@
 const chatHistory = document.getElementById("chatHistory");
 const chatForm = document.getElementById("chatForm");
 const userInput = document.getElementById("userInput");
+const API_KEY = "AIzaSyC9Pr-XskpeyGJbO6sONfozx4MTBSf8Z-M";
+const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`;
 
 const firstMessage = `안녕하세요! 저는 뉴욕 여행 버틀러예요 🗽
 June 23-27 뉴욕 여행을 도와드릴게요.
@@ -12,6 +14,23 @@ June 23-27 뉴욕 여행을 도와드릴게요.
 - 재즈바 & 드랙쇼
 - 전망대 정보
 - 교통 & 레스토랑 팁`;
+
+const SYSTEM_USER_PROMPT = `You are a professional NYC travel butler. You have deep knowledge about New York City travel. Answer in Korean. Be friendly and use emojis. Here is the travel schedule information:
+
+DAY 1 (June 23): YMCA Hostel check-in 15:00 / Vessel (Hudson Yards, free) / High Line (Chelsea, free) / Little Island (Pier 55, free) / Times Square (free)
+
+DAY 2 (June 24): MoMA ($30) / FIFA Fanzone at Flushing Meadows Queens (free) / East River Ferry ($4) / Jazz bar night
+
+DAY 3 (June 25): Central Park morning walk / SoHo shopping & brunch / Chelsea Gallery tour / Lower Manhattan Wall St & 9/11 Memorial / Broadway Musical
+
+DAY 4 (June 26): The Met ($30) / Guggenheim ($26) / Central Park picnic / Roosevelt Island Tram ($2.90) / Whitney Museum ($28)
+
+DAY 5 (June 27): Brooklyn Flea Market / Pebble Beach Brooklyn Bridge Park / DUMBO & Brooklyn Bridge / LGA Airport departure`;
+
+const conversation = [
+  { role: "user", text: SYSTEM_USER_PROMPT },
+  { role: "model", text: "알겠습니다! NYC 여행 버틀러로서 친절하고 이모지를 사용해 한국어로 안내할게요. 🗽✨" },
+];
 
 function addMessage(role, text, isHtml = false) {
   const row = document.createElement("div");
@@ -42,198 +61,48 @@ function showTypingIndicator() {
   );
 }
 
-function getMockResponse(input) {
-  const text = input.toLowerCase();
+async function getGeminiResponse(input) {
+  const requestBody = {
+    contents: [
+      ...conversation.map((entry) => ({
+        role: entry.role,
+        parts: [{ text: entry.text }],
+      })),
+      { role: "user", parts: [{ text: input }] },
+    ],
+  };
+  console.log("Request URL:", GEMINI_ENDPOINT);
+  console.log("Request body:", JSON.stringify(requestBody, null, 2));
 
-  if (text.includes("day 1") || text.includes("day1") || input.includes("첫째날")) {
-    return `📅 Day 1 — Midtown West & Chelsea
+  const response = await fetch(GEMINI_ENDPOINT, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(requestBody),
+  });
 
-⏰ 15:00 YMCA Hostel 체크인
-💰 사전결제 | 11:00 체크아웃
+  console.log("Response status:", response.status);
 
-⏰ 16:30 베슬 (Vessel)
-📍 Hudson Yards
-💰 무료 (사전예약 권장)
-💡 내부 16층 나선형 계단 구조물
+  const data = await response.json();
+  console.log("Response body:", JSON.stringify(data, null, 2));
 
-⏰ 17:30 하이라인 (High Line)
-📍 Chelsea
-💰 무료
-💡 남쪽→북쪽 방향 추천
-
-⏰ 19:00 리틀아일랜드 (Little Island)
-📍 Pier 55
-💰 무료
-💡 허드슨강 위 인공섬, 야경 추천
-
-⏰ 20:30 타임즈스퀘어
-📍 Midtown
-💰 무료
-💡 밤에 더 화려함, TKTS 계단 야경`;
+  if (!response.ok) {
+    throw new Error(`Gemini API error (${response.status})`);
   }
 
-  if (text.includes("day 2") || text.includes("day2")) {
-    return `📅 Day 2 — Art, Queens & Night Jazz
+  const answer = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
 
-⏰ 10:00 MoMA
-📍 Midtown Manhattan
-💰 유료
-💡 인기 작품 위주로 2~3시간 관람
-
-⏰ 14:00 FIFA Fanzone
-📍 Queens
-💰 무료/행사별 상이
-💡 경기일정과 입장조건 사전 확인
-
-⏰ 17:30 페리 탑승 (Ferry)
-📍 East River 노선
-💰 유료
-💡 해질녘 시간대 탑승 추천
-
-⏰ 21:00 재즈바 방문
-📍 Manhattan
-💰 커버차지/음료비 별도
-💡 공연 시작 20~30분 전 도착 추천`;
+  if (!answer) {
+    throw new Error("Gemini 응답이 비어 있습니다.");
   }
 
-  if (text.includes("day 3") || text.includes("day3")) {
-    return `📅 Day 3 — Uptown to Downtown + Musical
-
-⏰ 09:30 센트럴파크 (Central Park)
-📍 Manhattan
-💰 무료
-💡 Sheep Meadow/ Bethesda Fountain 산책 추천
-
-⏰ 12:30 소호 (SoHo)
-📍 Lower Manhattan
-💰 자유일정
-💡 쇼핑과 브런치 코스에 적합
-
-⏰ 15:30 첼시 (Chelsea)
-📍 Manhattan West Side
-💰 자유일정
-💡 갤러리/카페 중심으로 이동
-
-⏰ 18:00 로어맨해튼 (Lower Manhattan)
-📍 Financial District 일대
-💰 자유일정
-💡 야경 포인트 위주로 이동
-
-⏰ 20:00 뮤지컬 관람
-📍 Broadway Theater District
-💰 유료
-💡 예매 티켓은 모바일로 미리 준비`;
-  }
-
-  if (text.includes("day 4") || text.includes("day4")) {
-    return `📅 Day 4 — Museum Day & East River
-
-⏰ 10:00 The Met
-📍 Upper East Side
-💰 유료
-💡 이집트관/유럽회화관 인기
-
-⏰ 13:00 구겐하임 (Guggenheim)
-📍 5th Ave
-💰 유료
-💡 나선형 동선으로 빠르게 관람 가능
-
-⏰ 15:30 센트럴파크 피크닉
-📍 Great Lawn 주변
-💰 식비 별도
-💡 간단한 테이크아웃 도시락 추천
-
-⏰ 17:30 루즈벨트 아일랜드
-📍 Roosevelt Island Tram
-💰 대중교통 요금 적용
-💡 트램에서 맨해튼 스카이라인 감상
-
-⏰ 20:00 휘트니 미술관 (Whitney Museum)
-📍 Meatpacking District
-💰 유료
-💡 폐관시간과 야간 운영일 확인`;
-  }
-
-  if (text.includes("day 5") || text.includes("day5")) {
-    return `📅 Day 5 — Brooklyn Morning & Departure
-
-⏰ 09:30 브루클린 플리마켓
-📍 Brooklyn
-💰 입장 무료
-💡 빈티지 소품/로컬 푸드 탐방 추천
-
-⏰ 11:30 페블비치 (Pebble Beach)
-📍 DUMBO Waterfront
-💰 무료
-💡 맨해튼 브릿지+스카이라인 포토스팟
-
-⏰ 13:00 덤보 (DUMBO)
-📍 Brooklyn
-💰 자유일정
-💡 워싱턴 스트리트 포인트 방문 추천
-
-⏰ 16:00 LGA 공항 이동
-📍 LaGuardia Airport
-💰 교통비 별도
-💡 출발 2시간 전 공항 도착 권장`;
-  }
-
-  if (text.includes("musical") || input.includes("뮤지컬")) {
-    return `브로드웨이 뮤지컬 추천
-- Chicago
-- Lion King
-- Aladdin
-- SIX
-- Wicked
-- MJ`;
-  }
-
-  if (text.includes("jazz") || input.includes("재즈")) {
-    return `재즈바 추천
-- Village Vanguard
-- Blue Note
-- Dizzy's Club`;
-  }
-
-  if (input.includes("전망대") || text.includes("observatory") || text.includes("view")) {
-    return `전망대 추천
-- Empire State
-- One World
-- Top of the Rock
-- Summit
-- Edge`;
-  }
-
-  if (text.includes("drag") || input.includes("드랙")) {
-    return `드랙쇼 추천
-- Hardware Bar
-- Industry Bar
-- Pieces Bar`;
-  }
-
-  if (text.includes("transport") || input.includes("교통") || input.includes("지하철")) {
-    return `교통 팁
-- OMNY로 카드/휴대폰 태그 결제 가능
-- 지하철 기본 요금: $2.90
-- 공항 이동은 AirTrain + Subway 조합이 편리`;
-  }
-
-  if (
-    text.includes("tip") ||
-    input.includes("팁") ||
-    text.includes("restaurant") ||
-    input.includes("레스토랑")
-  ) {
-    return `레스토랑 & 팁 가이드
-- 일반 식당 팁: 보통 18~20%
-- 바에서 음료 주문 시 잔당 $1~2
-- 영수증에 Service Charge 포함 여부 먼저 확인`;
-  }
-
-  return "저는 뉴욕 여행 버틀러예요 🗽 일정, 뮤지컬, 재즈바, 전망대 등 뉴욕에 관한 건 뭐든 물어보세요!";
+  conversation.push({ role: "user", text: input });
+  conversation.push({ role: "model", text: answer });
+  return answer;
 }
 
-chatForm.addEventListener("submit", (event) => {
+chatForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
   const message = userInput.value.trim();
@@ -247,10 +116,18 @@ chatForm.addEventListener("submit", (event) => {
   const typingRow = showTypingIndicator();
   userInput.focus();
 
-  setTimeout(() => {
+  try {
+    const answer = await getGeminiResponse(message);
     typingRow.remove();
-    addMessage("butler", getMockResponse(message));
-  }, 1000);
+    addMessage("butler", answer);
+  } catch (error) {
+    typingRow.remove();
+    addMessage(
+      "butler",
+      "죄송해요, 지금 답변을 가져오는 중 문제가 발생했어요. 잠시 후 다시 시도해 주세요. 🙏"
+    );
+    console.error(error);
+  }
 });
 
 window.addEventListener("DOMContentLoaded", () => {
