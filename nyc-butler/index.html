@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NYC Travel Butler ??</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="app-header">
+        <h1>NYC Travel Butler ??</h1>
+      </header>
+
+      <section
+        id="chatHistory"
+        class="chat-history chat-container"
+        aria-live="polite"
+        aria-label="?? ???"
+      ></section>
+    </main>
+
+    <form id="chatForm" class="chat-form input-area" autocomplete="off">
+      <label for="userInput" class="sr-only">??? ??</label>
+      <input
+        id="userInput"
+        type="text"
+        placeholder="?: Day 2 ?? ??? / ??? ????"
+      />
+      <button type="submit">??</button>
+    </form>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
